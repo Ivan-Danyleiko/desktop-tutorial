@@ -60,7 +60,6 @@ def process_folder(folder_path, destination_folder, empty_folders):
         elif os.path.isdir(item_path):
             process_folder(item_path, destination_folder, empty_folders)
 
-    # Перевірте, чи папка порожня після обробки файлів
     if not os.listdir(folder_path):
         empty_folders.append(folder_path)
 
@@ -87,9 +86,9 @@ if __name__ == "__main__":
         print("Використання: python <шлях_скрипта> <шлях_папки>")
     else:
         folder_path = sys.argv[1]
-        destination_folder = folder_path  # Папка призначення - це головна директорія
+        destination_folder = folder_path  
         create_category_folders(folder_path, destination_folder)
-        empty_folders = []  # Список порожніх папок для видалення
+        empty_folders = [] 
         process_folder(folder_path, destination_folder, empty_folders)
         remove_empty_folders(folder_path)
         remove_empty_folders(destination_folder)
