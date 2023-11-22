@@ -2,7 +2,7 @@ import os
 import sys
 import shutil
 
-def normalize(input_str):
+def normalize(input_str, is_unknown=False):
     translit_mapping = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'є': 'ie', 'ж': 'zh', 'з': 'z',
         'и': 'i', 'і': 'i', 'ї': 'i', 'й': 'i', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
@@ -20,7 +20,10 @@ def normalize(input_str):
         else:
             normalized_name += '_'
 
-    return f"{normalized_name}{extension}"
+    if is_unknown:
+        return f"{normalized_name}{extension.lower()}"
+    else:
+        return f"{normalized_name}{extension}"
 
 def categorize_file(file_path):
     extension = file_path.split('.')[-1].upper()
@@ -47,11 +50,7 @@ def process_folder(folder_path, destination_folder, empty_folders):
 
         if os.path.isfile(item_path):
             destination = categorize_file(item_path)
-            normalized_name = normalize(os.path.basename(item_path))
-
-            if destination == 'unknown':
-                extension = os.path.splitext(item)[1].lstrip('.').lower()
-                normalized_name += f'.{extension}'
+            normalized_name = normalize(os.path.basename(item_path), destination == 'unknown')
 
             new_file_path = os.path.join(destination_folder, destination, normalized_name)
             os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
@@ -83,7 +82,7 @@ def remove_empty_folders(folder):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Використання: python <шлях_скрипта> <шлях_папки>")
+        print(' "Використання: python "шлях_скрипта" "шлях_папки" ')
     else:
         folder_path = sys.argv[1]
         destination_folder = folder_path  
