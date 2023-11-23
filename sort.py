@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import zipfile
 
 def normalize(input_str, is_unknown=False):
     translit_mapping = {
@@ -14,7 +15,7 @@ def normalize(input_str, is_unknown=False):
     normalized_name = ''
     for char in name:
         if char.lower() in translit_mapping:
-            normalized_name += translit_mapping[char.lower()]
+            normalized_name += translit_mapping[char.lower()] if char.islower() else translit_mapping[char.lower()].capitalize()
         elif char.isalnum():
             normalized_name += char.lower()
         else:
@@ -40,6 +41,18 @@ def categorize_file(file_path):
     else:
         return 'unknown'
 
+def extract_archive(archive_path, extract_to):
+    if zipfile.is_zipfile(archive_path):
+        with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_to)
+
+def remove_old_archives(folder):
+    for root, dirs, files in os.walk(folder):
+        for file in files:
+            file_path = os.path.join(root, file)
+            if categorize_file(file_path) == 'archives':
+                os.remove(file_path)
+
 def process_folder(folder_path, destination_folder, empty_folders):
     print(f"Обробка папки: {folder_path}")
 
@@ -55,6 +68,9 @@ def process_folder(folder_path, destination_folder, empty_folders):
             new_file_path = os.path.join(destination_folder, destination, normalized_name)
             os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
             shutil.move(item_path, new_file_path)
+
+            if destination == 'archives':
+                extract_archive(new_file_path, os.path.dirname(new_file_path))
 
         elif os.path.isdir(item_path):
             process_folder(item_path, destination_folder, empty_folders)
@@ -80,14 +96,59 @@ def remove_empty_folders(folder):
                 except OSError as e:
                     print(f"Не вдалося видалити порожню папку {dir_path}: {e}")
 
+def list_files_by_category(folder, output_file):
+    categories = ['images', 'video', 'documents', 'audio', 'archives', 'unknown']
+    with open(output_file, 'w', encoding='utf-8') as output_file_handle:
+        for category in categories:
+            output_file_handle.write(f"\nФайли у категорії {category}:\n")
+            category_path = os.path.join(folder, category)
+            for root, dirs, files in os.walk(category_path):
+                for file_name in files:
+                    file_path = os.path.join(root, file_name)
+                    output_file_handle.write(f"{file_path}\n")
+
+
+def list_known_extensions(folder, output_file):
+    known_extensions = set()
+    for root, dirs, files in os.walk(folder):
+        for file in files:
+            extension = file.split('.')[-1].upper()
+            known_extensions.add(extension)
+    with open(output_file, 'a', encoding='utf-8') as file:
+        file.write("\nВідомі розширення:\n")
+        file.write(', '.join(known_extensions))
+
+def list_unknown_extensions(folder, output_file):
+    unknown_extensions = set()
+    for root, dirs, files in os.walk(folder):
+        for file in files:
+            extension = categorize_file(file)
+            if extension == 'unknown':
+                unknown_extensions.add(file.split('.')[-1].lower())
+    with open(output_file, 'a', encoding='utf-8') as file:
+        file.write("\nНевідомі розширення:\n")
+        file.write(', '.join(unknown_extensions))
+
+def display_file_contents(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        contents = file.read()
+        print(contents)
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print(' "Використання: python "шлях_скрипта" "шлях_папки" ')
     else:
         folder_path = sys.argv[1]
-        destination_folder = folder_path  
+        destination_folder = folder_path
+        output_file = os.path.join(folder_path, 'results.txt')
+
         create_category_folders(folder_path, destination_folder)
         empty_folders = [] 
         process_folder(folder_path, destination_folder, empty_folders)
+        remove_old_archives(folder_path)
+        list_files_by_category(destination_folder, output_file)
+        list_known_extensions(destination_folder, output_file)
+        list_unknown_extensions(destination_folder, output_file)
         remove_empty_folders(folder_path)
         remove_empty_folders(destination_folder)
+        display_file_contents(output_file)
