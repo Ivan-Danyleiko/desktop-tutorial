@@ -41,10 +41,18 @@ def categorize_file(file_path):
     else:
         return 'unknown'
 
+
+
 def extract_archive(archive_path, extract_to):
     if zipfile.is_zipfile(archive_path):
         with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_to)
+            for file_info in zip_ref.infolist():
+                file_name_without_extension = os.path.splitext(file_info.filename)[0]
+                if file_name_without_extension:
+                    normalized_name = normalize(file_name_without_extension, is_unknown=True)
+                    extracted_file_path = os.path.join(extract_to, normalized_name)
+                    zip_ref.extract(file_info, extract_to)
+                    os.rename(os.path.join(extract_to, file_info.filename), extracted_file_path)
 
 def remove_old_archives(folder):
     for root, dirs, files in os.walk(folder):
@@ -70,7 +78,7 @@ def process_folder(folder_path, destination_folder, empty_folders):
             shutil.move(item_path, new_file_path)
 
             if destination == 'archives':
-                extract_archive(new_file_path, os.path.dirname(new_file_path))
+                extract_archive(new_file_path, os.path.join(destination_folder, 'archives', 'archives'))
 
         elif os.path.isdir(item_path):
             process_folder(item_path, destination_folder, empty_folders)
@@ -107,13 +115,7 @@ def list_files_by_category(folder, output_file):
                     file_path = os.path.join(root, file_name)
                     output_file_handle.write(f"{file_path}\n")
 
-
-def list_known_extensions(folder, output_file):
-    known_extensions = set()
-    for root, dirs, files in os.walk(folder):
-        for file in files:
-            extension = file.split('.')[-1].upper()
-            known_extensions.add(extension)
+def list_known_extensions(folder, output_file, known_extensions):
     with open(output_file, 'a', encoding='utf-8') as file:
         file.write("\nВідомі розширення:\n")
         file.write(', '.join(known_extensions))
@@ -127,6 +129,8 @@ def list_unknown_extensions(folder, output_file):
                 unknown_extensions.add(file.split('.')[-1].lower())
     with open(output_file, 'a', encoding='utf-8') as file:
         file.write("\nНевідомі розширення:\n")
+        if 'archives' in unknown_extensions:
+            unknown_extensions.remove('archives')
         file.write(', '.join(unknown_extensions))
 
 def display_file_contents(file_path):
@@ -147,8 +151,14 @@ if __name__ == "__main__":
         process_folder(folder_path, destination_folder, empty_folders)
         remove_old_archives(folder_path)
         list_files_by_category(destination_folder, output_file)
-        list_known_extensions(destination_folder, output_file)
+        
+        known_extensions = {'JPEG', 'PNG', 'JPG', 'SVG', 'AVI', 'MP4', 'MOV', 'MKV', 
+                            'DOC', 'DOCX', 'TXT', 'PDF', 'XLSX', 'PPTX', 'MP3', 
+                            'OGG', 'WAV', 'AMR', 'ZIP', 'GZ', 'TAR'}
+
+        list_known_extensions(destination_folder, output_file, known_extensions)
         list_unknown_extensions(destination_folder, output_file)
         remove_empty_folders(folder_path)
         remove_empty_folders(destination_folder)
         display_file_contents(output_file)
+        
