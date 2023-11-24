@@ -41,18 +41,21 @@ def categorize_file(file_path):
     else:
         return 'unknown'
 
-
-
 def extract_archive(archive_path, extract_to):
     if zipfile.is_zipfile(archive_path):
+        archive_folder_name = os.path.splitext(os.path.basename(archive_path))[0]
+        archive_folder = os.path.join(extract_to, 'archives', archive_folder_name)
+        os.makedirs(archive_folder, exist_ok=True)
+
         with zipfile.ZipFile(archive_path, 'r') as zip_ref:
             for file_info in zip_ref.infolist():
                 file_name_without_extension = os.path.splitext(file_info.filename)[0]
                 if file_name_without_extension:
                     normalized_name = normalize(file_name_without_extension, is_unknown=True)
-                    extracted_file_path = os.path.join(extract_to, normalized_name)
-                    zip_ref.extract(file_info, extract_to)
-                    os.rename(os.path.join(extract_to, file_info.filename), extracted_file_path)
+                    extracted_file_path = os.path.join(archive_folder, normalized_name)
+                    zip_ref.extract(file_info, archive_folder)
+                    os.rename(os.path.join(archive_folder, file_info.filename), extracted_file_path)
+                    print(f"Extracted file: {extracted_file_path}")
 
 def remove_old_archives(folder):
     for root, dirs, files in os.walk(folder):
@@ -62,7 +65,7 @@ def remove_old_archives(folder):
                 os.remove(file_path)
 
 def process_folder(folder_path, destination_folder, empty_folders):
-    print(f"Обробка папки: {folder_path}")
+    print(f"Processing folder: {folder_path}")
 
     items = os.listdir(folder_path)
 
@@ -73,12 +76,12 @@ def process_folder(folder_path, destination_folder, empty_folders):
             destination = categorize_file(item_path)
             normalized_name = normalize(os.path.basename(item_path), destination == 'unknown')
 
-            new_file_path = os.path.join(destination_folder, destination, normalized_name)
-            os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
-            shutil.move(item_path, new_file_path)
-
             if destination == 'archives':
-                extract_archive(new_file_path, os.path.join(destination_folder, 'archives', 'archives'))
+                extract_archive(item_path, destination_folder)
+            else:
+                new_file_path = os.path.join(destination_folder, destination, normalized_name)
+                os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
+                shutil.move(item_path, new_file_path)
 
         elif os.path.isdir(item_path):
             process_folder(item_path, destination_folder, empty_folders)
@@ -100,15 +103,15 @@ def remove_empty_folders(folder):
             if not os.listdir(dir_path):
                 try:
                     os.rmdir(dir_path)
-                    print(f"Порожню папку видалено: {dir_path}")
+                    print(f"Removed empty folder: {dir_path}")
                 except OSError as e:
-                    print(f"Не вдалося видалити порожню папку {dir_path}: {e}")
+                    print(f"Failed to remove empty folder {dir_path}: {e}")
 
 def list_files_by_category(folder, output_file):
     categories = ['images', 'video', 'documents', 'audio', 'archives', 'unknown']
     with open(output_file, 'w', encoding='utf-8') as output_file_handle:
         for category in categories:
-            output_file_handle.write(f"\nФайли у категорії {category}:\n")
+            output_file_handle.write(f"\nFiles in category {category}:\n")
             category_path = os.path.join(folder, category)
             for root, dirs, files in os.walk(category_path):
                 for file_name in files:
@@ -116,22 +119,22 @@ def list_files_by_category(folder, output_file):
                     output_file_handle.write(f"{file_path}\n")
 
 def list_known_extensions(folder, output_file, known_extensions):
-    with open(output_file, 'a', encoding='utf-8') as file:
-        file.write("\nВідомі розширення:\n")
-        file.write(', '.join(known_extensions))
+    with open(output_file, 'a', encoding='utf-8') as output_file_handle:
+        output_file_handle.write("\nKnown extensions:\n")
+        known_extensions_str = ', '.join(sorted(known_extensions))
+        output_file_handle.write(known_extensions_str)
 
 def list_unknown_extensions(folder, output_file):
-    unknown_extensions = set()
-    for root, dirs, files in os.walk(folder):
-        for file in files:
-            extension = categorize_file(file)
-            if extension == 'unknown':
-                unknown_extensions.add(file.split('.')[-1].lower())
-    with open(output_file, 'a', encoding='utf-8') as file:
-        file.write("\nНевідомі розширення:\n")
-        if 'archives' in unknown_extensions:
-            unknown_extensions.remove('archives')
-        file.write(', '.join(unknown_extensions))
+    with open(output_file, 'a', encoding='utf-8') as output_file_handle:
+        output_file_handle.write("\nUnknown extensions:\n")
+        unknown_extensions = set()
+        for root, dirs, files in os.walk(folder):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                if categorize_file(file_path) == 'unknown':
+                    unknown_extensions.add(os.path.splitext(file_name)[-1][1:])
+        unknown_extensions_str = ', '.join(sorted(unknown_extensions))
+        output_file_handle.write(unknown_extensions_str)
 
 def display_file_contents(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -140,7 +143,7 @@ def display_file_contents(file_path):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print(' "Використання: python "шлях_скрипта" "шлях_папки" ')
+        print('Usage: python "script_path" "folder_path"')
     else:
         folder_path = sys.argv[1]
         destination_folder = folder_path
@@ -161,4 +164,3 @@ if __name__ == "__main__":
         remove_empty_folders(folder_path)
         remove_empty_folders(destination_folder)
         display_file_contents(output_file)
-        
