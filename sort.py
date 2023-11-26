@@ -13,9 +13,15 @@ def normalize(input_str, is_unknown=False):
 
     name, extension = os.path.splitext(input_str)
     normalized_name = ''
+
+    # Додано перевірку для одиночної букви
+    if len(name) == 1 and name.isalpha():
+        return translit_mapping.get(name.lower(), name)
+
     for char in name:
         if char.lower() in translit_mapping:
-            normalized_name += translit_mapping[char.lower()] if char.islower() else translit_mapping[char.lower()].capitalize()
+            translit_char = translit_mapping[char.lower()]
+            normalized_name += translit_char.upper() if char.isupper() else translit_char
         elif char.isalnum():
             normalized_name += char.lower()
         else:
@@ -25,6 +31,7 @@ def normalize(input_str, is_unknown=False):
         return f"{normalized_name}{extension.lower()}"
     else:
         return f"{normalized_name}{extension}"
+
 
 def categorize_file(file_path):
     extension = file_path.split('.')[-1].upper()
