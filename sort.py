@@ -18,19 +18,25 @@ def normalize(input_str, is_unknown=False):
     if len(name) == 1 and name.isalpha():
         return translit_mapping.get(name.lower(), name)
 
-    for char in name:
-        if char.lower() in translit_mapping:
-            translit_char = translit_mapping[char.lower()]
-            normalized_name += translit_char.upper() if char.isupper() else translit_char
-        elif char.isalnum():
-            normalized_name += char.lower()
+    for orig_char in input_str:
+        if orig_char.lower() in translit_mapping:
+            translit_char = translit_mapping[orig_char.lower()]
+            if orig_char.isupper():
+                translit_char = translit_char.capitalize()
+            normalized_name += translit_char
+        elif orig_char.isalnum():
+            normalized_name += orig_char
         else:
             normalized_name += '_'
 
     if is_unknown:
-        return f"{normalized_name}{extension.lower()}"
+        result = f"{normalized_name}{extension.lower()}"
     else:
-        return f"{normalized_name}{extension}"
+        result = f"{normalized_name}{extension}"
+
+    print(f"Input: {input_str}, Output: {result}")
+
+    return result
 
 
 def categorize_file(file_path):
@@ -56,13 +62,14 @@ def extract_archive(archive_path, extract_to):
 
         with zipfile.ZipFile(archive_path, 'r') as zip_ref:
             for file_info in zip_ref.infolist():
-                file_name_without_extension = os.path.splitext(file_info.filename)[0]
+                file_name_without_extension, file_extension = os.path.splitext(file_info.filename)
                 if file_name_without_extension:
                     normalized_name = normalize(file_name_without_extension, is_unknown=True)
-                    extracted_file_path = os.path.join(archive_folder, normalized_name)
+                    extracted_file_path = os.path.join(archive_folder, f"{normalized_name}{file_extension}")
                     zip_ref.extract(file_info, archive_folder)
                     os.rename(os.path.join(archive_folder, file_info.filename), extracted_file_path)
                     print(f"Extracted file: {extracted_file_path}")
+
 
 def remove_old_archives(folder):
     for root, dirs, files in os.walk(folder):
