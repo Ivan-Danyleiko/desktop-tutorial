@@ -14,11 +14,10 @@ def normalize(input_str, is_unknown=False):
     name, extension = os.path.splitext(input_str)
     normalized_name = ''
 
-    # Додано перевірку для одиночної букви
     if len(name) == 1 and name.isalpha():
         return translit_mapping.get(name.lower(), name)
 
-    for orig_char in input_str:
+    for orig_char in name:
         if orig_char.lower() in translit_mapping:
             translit_char = translit_mapping[orig_char.lower()]
             if orig_char.isupper():
@@ -37,7 +36,6 @@ def normalize(input_str, is_unknown=False):
     print(f"Input: {input_str}, Output: {result}")
 
     return result
-
 
 def categorize_file(file_path):
     extension = file_path.split('.')[-1].upper()
@@ -69,7 +67,6 @@ def extract_archive(archive_path, extract_to):
                     zip_ref.extract(file_info, archive_folder)
                     os.rename(os.path.join(archive_folder, file_info.filename), extracted_file_path)
                     print(f"Extracted file: {extracted_file_path}")
-
 
 def remove_old_archives(folder):
     for root, dirs, files in os.walk(folder):
